@@ -1,0 +1,42 @@
+// ไฟล์: prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // ใช้ sqlite ตอน dev ไปก่อน (ง่ายและเร็ว)
+  url      = env("DATABASE_URL")
+}
+
+// 1. ตารางเก็บข้อมูลล็อคขายของ
+model Stall {
+  id        String    @id @default(cuid())
+  code      String    @unique // ชื่อล็อคห้ามซ้ำ เช่น "A01", "B02"
+  zone      String    // โซน เช่น "Fashion", "Food"
+  price     Int       // ราคาค่าเช่า
+  status    String    @default("ACTIVE") // ACTIVE=ปกติ, MAINTAIN=ปิดซ่อม
+  bookings  Booking[] // ความสัมพันธ์: 1 ล็อค มีคนจองได้หลายครั้ง (ต่างวันกัน)
+}
+
+// 2. ตารางการจอง
+model Booking {
+  id           String   @id @default(cuid())
+  stallId      String
+  stall        Stall    @relation(fields: [stallId], references: [id])
+  customerName String   // ชื่อคนจอง
+  customerTel  String?  // เบอร์โทร (ใส่ ? แปลว่าไม่บังคับ)
+  bookingDate  DateTime // วันที่จะมาขาย
+  
+  // สถานะ: PENDING_PAYMENT (รอจ่าย), CONFIRMED (จ่ายแล้ว), CANCELLED (ยกเลิก)
+  status       String   @default("PENDING_PAYMENT") 
+  
+  slipUrl      String?  // ลิงก์รูปสลิปโอนเงิน (เผื่อไว้)
+  expiresAt    DateTime? // เวลาที่ต้องจ่ายเงินภายใน (เช่น อีก 15 นาที)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Constraint สำคัญ! "ห้ามจองล็อคเดิม ในวันเดิม ซ้ำกัน" (ถ้าสถานะไม่ใช่ CANCELLED)
+  // แต่ในระดับ DB เราทำ Unique แบบง่ายๆ ไว้ก่อน แล้วค่อยไปเช็ค Logic ใน API อีกที
+  // @@unique([stallId, bookingDate]) 
+}
