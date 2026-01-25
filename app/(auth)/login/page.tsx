@@ -4,6 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// Mock Admin Account
+const ADMIN_ACCOUNT = {
+  email: "admin@marketbooker.com",
+  password: "admin123",
+  role: "admin",
+  name: "ผู้ดูแลระบบ"
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -26,6 +34,29 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // ตรวจสอบว่าเป็น Admin account หรือไม่
+      if (
+        formData.email === ADMIN_ACCOUNT.email &&
+        formData.password === ADMIN_ACCOUNT.password
+      ) {
+        // Login สำเร็จ - บันทึกข้อมูล Admin
+        const adminData = {
+          email: ADMIN_ACCOUNT.email,
+          role: ADMIN_ACCOUNT.role,
+          name: ADMIN_ACCOUNT.name,
+          id: "admin-001"
+        };
+
+        localStorage.setItem("user", JSON.stringify(adminData));
+        localStorage.setItem("token", "admin-token-" + Date.now());
+        localStorage.setItem("isAdmin", "true");
+
+        // ไปหน้าหลัก (Home) แทน Dashboard
+        router.push("/");
+        return;
+      }
+
+      // ถ้าไม่ใช่ admin ให้เรียก API ปกติ
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -37,7 +68,7 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "เข้าสู่ระบบไม่สำเร็จ");
+        throw new Error(data.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       }
 
       // บันทึก token ลง localStorage
@@ -64,6 +95,17 @@ export default function LoginPage() {
           <p className="text-slate-600">
             ยินดีต้อนรับกลับสู่ระบบจองแผงตลาด
           </p>
+        </div>
+
+        {/* Admin Info Card */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800 font-medium mb-2">
+            🔐 บัญชีทดสอบสำหรับแอดมิน:
+          </p>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p>อีเมล: <span className="font-mono bg-white px-2 py-0.5 rounded">admin@marketbooker.com</span></p>
+            <p>รหัสผ่าน: <span className="font-mono bg-white px-2 py-0.5 rounded">admin123</span></p>
+          </div>
         </div>
 
         {/* Error Message */}
