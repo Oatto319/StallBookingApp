@@ -69,7 +69,7 @@ const Navbar = () => {
             <Link href="/" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
               หน้าแรก
             </Link>
-            <Link href="#" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
+            <Link href="/minimap" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
               ผังตลาด
             </Link>
             <Link href="#" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
@@ -132,8 +132,8 @@ const Navbar = () => {
           >
             หน้าแรก
           </Link>
-          <Link 
-            href="#" 
+          <Link
+            href="/minimap"
             className="block text-slate-600 font-medium px-4"
             onClick={() => setIsOpen(false)}
           >
