@@ -10,7 +10,9 @@ import {
   ArrowLeft,
   Store,
   DollarSign,
-  CalendarDays
+  CalendarDays,
+  X,
+  Plus
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,14 +37,30 @@ const BookingPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedZone, setSelectedZone] = useState<string>('all');
   
-  // Simple date states
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [numberOfDays, setNumberOfDays] = useState(0);
+  // Multiple dates selection
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [newDate, setNewDate] = useState('');
   const [totalPrice, setTotalPrice] = useState(0);
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
+
+  // Get next Saturday
+  const getNextSaturday = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+    const daysUntilSaturday = dayOfWeek === 6 ? 0 : (6 - dayOfWeek + 7) % 7;
+    const nextSaturday = new Date(today);
+    nextSaturday.setDate(today.getDate() + daysUntilSaturday);
+    return nextSaturday.toISOString().split('T')[0];
+  };
+
+  // Check if date is Saturday or Sunday
+  const isWeekend = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+  };
 
   // Initialize stalls
   useEffect(() => {
@@ -92,24 +110,14 @@ const BookingPage = () => {
     initializeStalls();
   }, []);
 
-  // Calculate number of days and total price
+  // Calculate total price when dates or stall changes
   useEffect(() => {
-    if (startDate && endDate && selectedStall) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      setNumberOfDays(diffDays);
-      setTotalPrice(selectedStall.price * diffDays);
-    } else if (startDate && !endDate && selectedStall) {
-      setNumberOfDays(1);
-      setTotalPrice(selectedStall.price);
+    if (selectedStall && selectedDates.length > 0) {
+      setTotalPrice(selectedStall.price * selectedDates.length);
     } else {
-      setNumberOfDays(0);
       setTotalPrice(0);
     }
-  }, [startDate, endDate, selectedStall]);
+  }, [selectedDates, selectedStall]);
 
   // Countdown timer
   useEffect(() => {
@@ -168,14 +176,93 @@ const BookingPage = () => {
     
     setSelectedStall(null);
     setTimeLeft(null);
-    setStartDate('');
-    setEndDate('');
+    setSelectedDates([]);
+    setNewDate('');
+  };
+
+  // Add new date
+  const handleAddDate = () => {
+    if (!newDate) {
+      alert('กรุณาเลือกวันที่');
+      return;
+    }
+
+    if (!isWeekend(newDate)) {
+      alert('⚠️ กรุณาเลือกวันเสาร์หรืออาทิตย์เท่านั้น\n(ตลาดนัดถนนคนเดินเปิดทุกวันเสาร์-อาทิตย์)');
+      return;
+    }
+
+    if (selectedDates.includes(newDate)) {
+      alert('วันที่นี้ถูกเลือกแล้ว');
+      return;
+    }
+
+    setSelectedDates(prev => [...prev, newDate].sort());
+    setNewDate('');
+  };
+
+  // Remove date
+  const handleRemoveDate = (dateToRemove: string) => {
+    setSelectedDates(prev => prev.filter(d => d !== dateToRemove));
+  };
+
+  // Quick add multiple dates
+  const handleQuickAddDates = (type: 'weekend' | '2weekends' | '4weekends') => {
+    if (!selectedStall) {
+      alert('กรุณาเลือกช่องก่อน');
+      return;
+    }
+
+    const dates: string[] = [];
+    const startDate = new Date(getNextSaturday());
+
+    switch (type) {
+      case 'weekend':
+        // This weekend (Sat + Sun)
+        dates.push(startDate.toISOString().split('T')[0]);
+        const sunday = new Date(startDate);
+        sunday.setDate(startDate.getDate() + 1);
+        dates.push(sunday.toISOString().split('T')[0]);
+        break;
+
+      case '2weekends':
+        // 2 weekends (4 days)
+        for (let week = 0; week < 2; week++) {
+          const sat = new Date(startDate);
+          sat.setDate(startDate.getDate() + (week * 7));
+          dates.push(sat.toISOString().split('T')[0]);
+          
+          const sun = new Date(sat);
+          sun.setDate(sat.getDate() + 1);
+          dates.push(sun.toISOString().split('T')[0]);
+        }
+        break;
+
+      case '4weekends':
+        // 4 weekends (8 days)
+        for (let week = 0; week < 4; week++) {
+          const sat = new Date(startDate);
+          sat.setDate(startDate.getDate() + (week * 7));
+          dates.push(sat.toISOString().split('T')[0]);
+          
+          const sun = new Date(sat);
+          sun.setDate(sat.getDate() + 1);
+          dates.push(sun.toISOString().split('T')[0]);
+        }
+        break;
+    }
+
+    // Merge with existing dates and remove duplicates
+    const uniqueDates = Array.from(new Set([...selectedDates, ...dates])).sort();
+    setSelectedDates(uniqueDates);
   };
 
   const formatDateThai = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
+    const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+    const dayName = dayNames[date.getDay()];
+    return dayName + ' ' + date.toLocaleDateString('th-TH', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -184,18 +271,9 @@ const BookingPage = () => {
 
   // Proceed to payment
   const handleProceedToPayment = () => {
-    if (!selectedStall || !startDate) {
-      alert('กรุณาเลือกที่และวันที่เริ่มจอง');
+    if (!selectedStall || selectedDates.length === 0) {
+      alert('กรุณาเลือกช่องและวันที่จอง');
       return;
-    }
-    
-    const finalEndDate = endDate || startDate;
-    const bookingDates = [];
-    const start = new Date(startDate);
-    const end = new Date(finalEndDate);
-    
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      bookingDates.push(new Date(d).toISOString().split('T')[0]);
     }
     
     localStorage.setItem('pendingBooking', JSON.stringify({
@@ -204,12 +282,9 @@ const BookingPage = () => {
         price: totalPrice
       },
       sessionId,
-      bookingDate: startDate,
-      startDate,
-      endDate: finalEndDate,
-      numberOfDays,
+      bookingDates: selectedDates,
+      numberOfDays: selectedDates.length,
       totalPrice,
-      bookingDates,
       pricePerDay: selectedStall.price,
       expiresAt: selectedStall.reservedUntil
     }));
@@ -263,7 +338,7 @@ const BookingPage = () => {
             <span className="font-medium">กลับหน้าแรก</span>
           </Link>
           <h1 className="text-3xl font-bold text-slate-800 mb-1">จองช่องตลาด</h1>
-          <p className="text-sm text-slate-600">เลือกช่องและระบุวันที่ต้องการจอง</p>
+          <p className="text-sm text-slate-600">เลือกช่องและระบุวันที่ต้องการจอง (เลือกได้หลายวัน)</p>
         </div>
 
         {/* Stats */}
@@ -308,7 +383,7 @@ const BookingPage = () => {
             เลือกช่องและวันที่จอง
           </h2>
 
-          {/* Filters and Simple Date Inputs */}
+          {/* Filters and Date Selection */}
           <div className="mb-4 p-4 bg-slate-50 rounded-lg">
             <div className="grid grid-cols-1 gap-4">
               {/* Zone Filter */}
@@ -330,123 +405,134 @@ const BookingPage = () => {
                 </select>
               </div>
 
-              {/* Simple Date Inputs */}
-              <div className="bg-white p-4 rounded-lg border-2 border-blue-200">
+              {/* Multiple Date Picker */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <CalendarDays className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-slate-800">เลือกวันที่จอง</h3>
+                  <h3 className="font-semibold text-base text-slate-800">เลือกวันที่จอง (หลายวัน)</h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      วันที่เริ่มต้น <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        if (endDate && e.target.value > endDate) {
-                          setEndDate('');
-                        }
-                      }}
-                      min={today}
-                      disabled={!selectedStall}
-                      className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      วันที่สิ้นสุด <span className="text-slate-400">(ถ้าจองหลายวัน)</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate || today}
-                      disabled={!startDate || !selectedStall}
-                      className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed text-sm"
-                    />
-                  </div>
+                {/* Weekend Only Notice */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-purple-800">
+                    <strong>📅 ตลาดนัดถนนคนเดิน</strong> เปิดทุกวันเสาร์-อาทิตย์เท่านั้น
+                  </p>
                 </div>
 
-                {/* Quick Select Buttons */}
-                {startDate && selectedStall && (
-                  <div className="mt-3 pt-3 border-t border-slate-200">
-                    <p className="text-xs text-slate-600 mb-2">จองแบบด่วน:</p>
-                    <div className="flex flex-wrap gap-2">
+                {/* Quick Add Buttons */}
+                {selectedStall && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-slate-700 mb-2">📅 จองแบบด่วน:</p>
+                    <div className="grid grid-cols-3 gap-2">
                       <button
-                        onClick={() => setEndDate(startDate)}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                        type="button"
+                        onClick={() => handleQuickAddDates('weekend')}
+                        className="px-3 py-2 text-sm font-medium bg-white border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-all"
                       >
-                        1 วัน
+                        สุดสัปดาห์นี้
+                        <div className="text-xs text-slate-600">(2 วัน)</div>
                       </button>
                       <button
-                        onClick={() => {
-                          const date = new Date(startDate);
-                          date.setDate(date.getDate() + 2);
-                          setEndDate(date.toISOString().split('T')[0]);
-                        }}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                        type="button"
+                        onClick={() => handleQuickAddDates('2weekends')}
+                        className="px-3 py-2 text-sm font-medium bg-white border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 hover:border-purple-400 transition-all"
                       >
-                        3 วัน
+                        2 สุดสัปดาห์
+                        <div className="text-xs text-slate-600">(4 วัน)</div>
                       </button>
                       <button
-                        onClick={() => {
-                          const date = new Date(startDate);
-                          date.setDate(date.getDate() + 6);
-                          setEndDate(date.toISOString().split('T')[0]);
-                        }}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                        type="button"
+                        onClick={() => handleQuickAddDates('4weekends')}
+                        className="px-3 py-2 text-sm font-medium bg-white border-2 border-green-300 text-green-700 rounded-lg hover:bg-green-100 hover:border-green-400 transition-all"
                       >
-                        7 วัน
+                        4 สุดสัปดาห์
+                        <div className="text-xs text-slate-600">(8 วัน)</div>
                       </button>
-                      <button
-                        onClick={() => {
-                          const date = new Date(startDate);
-                          date.setDate(date.getDate() + 29);
-                          setEndDate(date.toISOString().split('T')[0]);
-                        }}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                      >
-                        30 วัน
-                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Add Date Input */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    เพิ่มวันที่จอง <span className="text-purple-600">(เสาร์-อาทิตย์)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      min={getNextSaturday()}
+                      disabled={!selectedStall}
+                      className="flex-1 px-3 py-2 text-sm border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDate}
+                      disabled={!selectedStall || !newDate}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      เพิ่ม
+                    </button>
+                  </div>
+                  {!selectedStall && (
+                    <p className="text-xs text-orange-600 mt-1">⚠️ เลือกช่องก่อน</p>
+                  )}
+                </div>
+
+                {/* Selected Dates List */}
+                {selectedDates.length > 0 && (
+                  <div className="bg-white rounded-lg p-3 border-2 border-blue-200">
+                    <p className="text-sm font-semibold text-slate-700 mb-2">
+                      วันที่เลือก ({selectedDates.length} วัน)
+                    </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {selectedDates.map((date, index) => (
+                        <div
+                          key={date}
+                          className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg border border-blue-200"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded">
+                              #{index + 1}
+                            </span>
+                            <span className="text-sm font-medium text-slate-800">
+                              {formatDateThai(date)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDate(date)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Date Range Summary */}
-            {startDate && selectedStall && (
-              <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs text-slate-600 mb-1">ช่วงเวลาจอง:</p>
-                    <p className="text-sm font-bold text-slate-800">
-                      {formatDateThai(startDate)}
-                      {endDate && endDate !== startDate && (
-                        <> ถึง {formatDateThai(endDate)}</>
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-600">จำนวน</p>
-                    <p className="text-2xl font-bold text-blue-600">{numberOfDays}</p>
+            {/* Date & Price Summary */}
+            {selectedStall && selectedDates.length > 0 && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-600 mb-1">จำนวนวันที่จอง</p>
+                    <p className="text-3xl font-bold text-blue-600">{selectedDates.length}</p>
                     <p className="text-xs text-slate-600">วัน</p>
                   </div>
-                  <div className="text-right ml-4">
-                    <p className="text-xs text-slate-600">ราคารวม</p>
-                    <p className="text-2xl font-bold text-green-600">฿{totalPrice.toLocaleString()}</p>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-600 mb-1">ราคารวมทั้งหมด</p>
+                    <p className="text-3xl font-bold text-green-600">฿{totalPrice.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      ({selectedStall.price.toLocaleString()} บาท × {selectedDates.length} วัน)
+                    </p>
                   </div>
                 </div>
-                {numberOfDays > 1 && (
-                  <p className="text-xs text-slate-500 mt-2">
-                    ({selectedStall.price.toLocaleString()} บาท × {numberOfDays} วัน)
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -528,7 +614,7 @@ const BookingPage = () => {
                   <p className="font-medium mb-1">วิธีการจอง:</p>
                   <ol className="list-decimal list-inside space-y-0.5">
                     <li>เลือกช่องที่ต้องการจากด้านล่าง</li>
-                    <li>เลือกวันที่เริ่มต้น และวันที่สิ้นสุด (ถ้าจองหลายวัน)</li>
+                    <li>เลือกวันที่จอง (สามารถเลือกได้หลายวัน ไม่ต้องติดกัน)</li>
                     <li>ตรวจสอบราคาและจำนวนวัน</li>
                     <li>กดปุ่มชำระเงิน</li>
                   </ol>
@@ -539,11 +625,11 @@ const BookingPage = () => {
 
           <button
             onClick={handleProceedToPayment}
-            disabled={!selectedStall || !startDate || totalPrice === 0}
+            disabled={!selectedStall || selectedDates.length === 0 || totalPrice === 0}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
           >
             <DollarSign className="w-5 h-5" />
-            {totalPrice > 0 ? `ชำระเงิน ฿${totalPrice.toLocaleString()}` : 'กรุณาเลือกช่องและวันที่'}
+            {totalPrice > 0 ? `ชำระเงิน ฿${totalPrice.toLocaleString()} (${selectedDates.length} วัน)` : 'กรุณาเลือกช่องและวันที่'}
           </button>
         </div>
       </div>
