@@ -85,12 +85,12 @@ const Navbar = () => {
                     className="text-slate-600 hover:text-blue-600 font-medium transition-colors flex items-center gap-2"
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    ผู้ดูแลสบ
+                    Dashboard Admin
                   </Link>
                 )}
                 <div className="flex items-center gap-3">
                   <span className="text-slate-600 font-medium">
-                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "ผู้ใช้"}
                     {isAdmin && <span className="ml-2 text-xs text-blue-600">(Admin)</span>}
                   </span>
                   <button
@@ -152,7 +152,7 @@ const Navbar = () => {
             {user ? (
               <>
                 <div className="px-4 py-2 text-slate-600 font-medium mb-2">
-                  {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
+                  {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "ผู้ใช้"}
                   {isAdmin && <span className="ml-2 text-xs text-blue-600">(Admin)</span>}
                 </div>
                 
