@@ -6,8 +6,8 @@ import Link from "next/link";
 
 // Mock Admin Account
 const ADMIN_ACCOUNT = {
-  email: "admin@marketbooker.com",
-  password: "admin123",
+  email: "admin@example.com",
+  password: "Admin@1234",
   role: "admin",
   name: "ผู้ดูแลระบบ"
 };
@@ -74,6 +74,11 @@ export default function LoginPage() {
       // บันทึก token ลง localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // ✅ ตั้งค่า isAdmin จาก API response
+      if (data.user.isAdmin) {
+        localStorage.setItem("isAdmin", "true");
+      }
 
       // ไปหน้าหลัก
       router.push("/");

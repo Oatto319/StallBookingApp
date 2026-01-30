@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.344.0",
     "next": "^14.2.15",
     "react": "^18",
@@ -23,6 +25,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.0.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",

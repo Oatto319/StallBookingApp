@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 pt-20">
       {/* Navigation Bar */}
       <Navbar />
 

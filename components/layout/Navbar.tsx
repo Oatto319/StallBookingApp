@@ -81,16 +81,16 @@ const Navbar = () => {
               <>
                 {isAdmin && (
                   <Link 
-                    href="/admin/dashboard"
+                    href="/admin/bookings"
                     className="text-slate-600 hover:text-blue-600 font-medium transition-colors flex items-center gap-2"
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
+                    ผู้ดูแลสบ
                   </Link>
                 )}
                 <div className="flex items-center gap-3">
                   <span className="text-slate-600 font-medium">
-                    {user.name || user.email}
+                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
                     {isAdmin && <span className="ml-2 text-xs text-blue-600">(Admin)</span>}
                   </span>
                   <button
@@ -152,18 +152,18 @@ const Navbar = () => {
             {user ? (
               <>
                 <div className="px-4 py-2 text-slate-600 font-medium mb-2">
-                  {user.name || user.email}
+                  {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}
                   {isAdmin && <span className="ml-2 text-xs text-blue-600">(Admin)</span>}
                 </div>
                 
                 {isAdmin && (
                   <Link 
-                    href="/admin/dashboard"
+                    href="/admin/bookings"
                     className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all mb-2"
                     onClick={() => setIsOpen(false)}
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
+                    ผู้ดูแลสบ
                   </Link>
                 )}
 

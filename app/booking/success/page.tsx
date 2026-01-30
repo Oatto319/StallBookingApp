@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, Download, Mail, Phone, MapPin, Calendar, Home } from 'lucide-react';
 
-const BookingSuccessPage = () => {
+const BookingSuccessContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [stallNumber, setStallNumber] = useState('');
@@ -143,6 +143,14 @@ const BookingSuccessPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const BookingSuccessPage = () => {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">กำลังโหลด...</div>}>
+      <BookingSuccessContent />
+    </Suspense>
   );
 };
 
