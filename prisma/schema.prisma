@@ -27,6 +27,7 @@ model Booking {
   customerName String   // ชื่อคนจอง
   customerTel  String?  // เบอร์โทร (ใส่ ? แปลว่าไม่บังคับ)
   bookingDate  DateTime // วันที่จะมาขาย
+  userId       String?  // ID ของผู้จอง (เชื่อมต่อกับ User)
   
   // สถานะ: PENDING_PAYMENT (รอจ่าย), CONFIRMED (จ่ายแล้ว), CANCELLED (ยกเลิก)
   status       String   @default("PENDING_PAYMENT") 
@@ -39,4 +40,20 @@ model Booking {
   // Constraint สำคัญ! "ห้ามจองล็อคเดิม ในวันเดิม ซ้ำกัน" (ถ้าสถานะไม่ใช่ CANCELLED)
   // แต่ในระดับ DB เราทำ Unique แบบง่ายๆ ไว้ก่อน แล้วค่อยไปเช็ค Logic ใน API อีกที
   // @@unique([stallId, bookingDate]) 
+}
+
+// 3. ตารางคิวการจอง (Queue System)
+model BookingQueue {
+  id            String    @id @default(cuid())
+  stallId       String    // ID ของจอดที่ต้องการจอง
+  userId        String    // ID ของผู้ใช้ที่อยู่ในคิว
+  userName      String    // ชื่อผู้ใช้ (สำหรับแสดงผล)
+  bookingDate   DateTime  // วันที่ต้องการจอง
+  status        String    @default("WAITING") // WAITING (รอคิว), OFFERED (เสนอแล้ว), ACCEPTED (ยอมรับ), EXPIRED (หมดเวลา)
+  queuePosition Int       // ลำดับที่ในคิว (1, 2, 3...)
+  createdAt     DateTime  @default(now())
+  offerExpiry   DateTime? // เวลาที่หมดเวลาสำหรับการยอมรับเสนอ (เช่น 10 นาที)
+  notified      Boolean   @default(false) // ว่าได้แจ้งเตือนผู้ใช้แล้วหรือยัง
+
+  @@unique([stallId, bookingDate, userId]) // ห้ามมีคนเดียวกันอยู่ในคิวเดียวกันสองครั้ง
 }

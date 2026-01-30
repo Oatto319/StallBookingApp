@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Building2, Smartphone, Check, Clock, AlertCircle, ArrowLeft, Upload, CalendarDays, Scan, X, FileCheck, Loader2, RotateCw, XCircle, CheckCircle } from 'lucide-react';
+import { CreditCard, Building2, Smartphone, Check, Clock, AlertCircle, ArrowLeft, Upload, CalendarDays, Scan, X, FileCheck, Loader2, RotateCw, XCircle, CheckCircle, Plus } from 'lucide-react';
 
 interface BookingData {
   stall: {
@@ -13,14 +13,15 @@ interface BookingData {
     size: string;
   };
   sessionId: string;
-  bookingDate: string;
-  startDate: string;
-  endDate: string;
-  numberOfDays: number;
-  totalPrice: number;
-  bookingDates: string[];
-  pricePerDay: number;
+  bookingDate?: string;
+  startDate?: string;
+  endDate?: string;
+  numberOfDays?: number;
+  totalPrice?: number;
+  bookingDates?: string[];
+  pricePerDay?: number;
   expiresAt: string;
+  queueId?: string;
 }
 
 interface OCRResult {
@@ -51,6 +52,11 @@ const PaymentPage = () => {
   const [ocrAttempts, setOcrAttempts] = useState(0);
   const [isOCRVerified, setIsOCRVerified] = useState(false);
 
+  // Multiple dates selection
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [newDate, setNewDate] = useState('');
+  const [totalPrice, setTotalPrice] = useState(0);
+
   // Form states
   const [formData, setFormData] = useState({
     name: '',
@@ -61,6 +67,26 @@ const PaymentPage = () => {
     cvv: '',
     slipImage: null as File | null
   });
+
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get next Saturday
+  const getNextSaturday = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysUntilSaturday = dayOfWeek === 6 ? 0 : (6 - dayOfWeek + 7) % 7;
+    const nextSaturday = new Date(today);
+    nextSaturday.setDate(today.getDate() + daysUntilSaturday);
+    return nextSaturday.toISOString().split('T')[0];
+  };
+
+  // Check if date is Saturday or Sunday
+  const isWeekend = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6;
+  };
 
   useEffect(() => {
     const storedData = localStorage.getItem('pendingBooking');
@@ -81,8 +107,25 @@ const PaymentPage = () => {
     }
 
     setBookingData(data);
+    
+    // ถ้ามี bookingDates มาจากหน้า booking เดิม ให้ใช้ต่อ
+    if (data.bookingDates && data.bookingDates.length > 0) {
+      setSelectedDates(data.bookingDates);
+      setTotalPrice(data.totalPrice || 0);
+    }
+    
     setTimeLeft(Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
   }, [router]);
+
+  // Calculate total price when dates change
+  useEffect(() => {
+    if (bookingData && selectedDates.length > 0) {
+      const pricePerDay = bookingData.stall.price;
+      setTotalPrice(pricePerDay * selectedDates.length);
+    } else {
+      setTotalPrice(0);
+    }
+  }, [selectedDates, bookingData]);
 
   // Countdown timer
   useEffect(() => {
@@ -112,16 +155,86 @@ const PaymentPage = () => {
   const formatDateThai = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+    const dayName = dayNames[date.getDay()];
+    return dayName + ' ' + date.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Add new date
+  const handleAddDate = () => {
+    if (!newDate) {
+      alert('กรุณาเลือกวันที่');
+      return;
+    }
+
+    if (!isWeekend(newDate)) {
+      alert('⚠️ กรุณาเลือกวันเสาร์หรืออาทิตย์เท่านั้น\n(ตลาดนัดถนนคนเดินเปิดทุกวันเสาร์-อาทิตย์)');
+      return;
+    }
+
+    if (selectedDates.includes(newDate)) {
+      alert('วันที่นี้ถูกเลือกแล้ว');
+      return;
+    }
+
+    setSelectedDates(prev => [...prev, newDate].sort());
+    setNewDate('');
+  };
+
+  // Remove date
+  const handleRemoveDate = (dateToRemove: string) => {
+    setSelectedDates(prev => prev.filter(d => d !== dateToRemove));
+  };
+
+  // Quick add multiple dates
+  const handleQuickAddDates = (type: 'weekend' | '2weekends' | '4weekends') => {
+    const dates: string[] = [];
+    const startDate = new Date(getNextSaturday());
+
+    switch (type) {
+      case 'weekend':
+        dates.push(startDate.toISOString().split('T')[0]);
+        const sunday = new Date(startDate);
+        sunday.setDate(startDate.getDate() + 1);
+        dates.push(sunday.toISOString().split('T')[0]);
+        break;
+
+      case '2weekends':
+        for (let week = 0; week < 2; week++) {
+          const sat = new Date(startDate);
+          sat.setDate(startDate.getDate() + (week * 7));
+          dates.push(sat.toISOString().split('T')[0]);
+          
+          const sun = new Date(sat);
+          sun.setDate(sat.getDate() + 1);
+          dates.push(sun.toISOString().split('T')[0]);
+        }
+        break;
+
+      case '4weekends':
+        for (let week = 0; week < 4; week++) {
+          const sat = new Date(startDate);
+          sat.setDate(startDate.getDate() + (week * 7));
+          dates.push(sat.toISOString().split('T')[0]);
+          
+          const sun = new Date(sat);
+          sun.setDate(sat.getDate() + 1);
+          dates.push(sun.toISOString().split('T')[0]);
+        }
+        break;
+    }
+
+    const uniqueDates = Array.from(new Set([...selectedDates, ...dates])).sort();
+    setSelectedDates(uniqueDates);
   };
 
   // ระบบ OCR - เรียก API จริง
@@ -132,7 +245,7 @@ const PaymentPage = () => {
     try {
       const formDataOCR = new FormData();
       formDataOCR.append('slip', file);
-      formDataOCR.append('expectedAmount', bookingData?.totalPrice.toString() || '0');
+      formDataOCR.append('expectedAmount', totalPrice.toString());
 
       const response = await fetch('/api/ocr/verify-slip', {
         method: 'POST',
@@ -194,7 +307,7 @@ const PaymentPage = () => {
 
     // ตรวจสอบผลลัพธ์
     if (result.success) {
-      const expectedAmount = bookingData?.totalPrice || 0;
+      const expectedAmount = totalPrice;
       
       if (result.amount === expectedAmount) {
         setIsOCRVerified(true);
@@ -215,7 +328,6 @@ const PaymentPage = () => {
       }
     } else {
       setIsOCRVerified(false);
-      // OCR ล้มเหลว - แสดงข้อผิดพลาดจาก API
       const errorMsg = result.errors?.join('\n• ') || 'ไม่สามารถอ่านข้อมูลจากสลิปได้';
       setError(
         `❌ ไม่สามารถตรวจสอบสลิปได้\n• ${errorMsg}\n\n` +
@@ -231,6 +343,11 @@ const PaymentPage = () => {
   const validateForm = () => {
     if (!formData.name || !formData.email || !formData.phone) {
       setError('❌ กรุณากรอกข้อมูลติดต่อให้ครบถ้วน');
+      return false;
+    }
+
+    if (selectedDates.length === 0) {
+      setError('❌ กรุณาเลือกวันที่จองอย่างน้อย 1 วัน');
       return false;
     }
 
@@ -257,9 +374,8 @@ const PaymentPage = () => {
         return false;
       }
 
-      const expectedAmount = bookingData?.totalPrice || 0;
-      if (ocrResult.amount !== expectedAmount) {
-        setError(`❌ จำนวนเงินไม่ตรงกัน (ต้องการ: ฿${expectedAmount.toLocaleString()}, ในสลิป: ฿${ocrResult.amount?.toLocaleString() || '0'})`);
+      if (ocrResult.amount !== totalPrice) {
+        setError(`❌ จำนวนเงินไม่ตรงกัน (ต้องการ: ฿${totalPrice.toLocaleString()}, ในสลิป: ฿${ocrResult.amount?.toLocaleString() || '0'})`);
         return false;
       }
 
@@ -283,7 +399,13 @@ const PaymentPage = () => {
     try {
       const paymentData = {
         ...formData,
-        booking: bookingData,
+        booking: {
+          ...bookingData,
+          bookingDates: selectedDates,
+          numberOfDays: selectedDates.length,
+          totalPrice: totalPrice,
+          pricePerDay: bookingData?.stall.price
+        },
         paymentMethod,
         ocrResult: ocrResult,
         ocrVerified: isOCRVerified,
@@ -331,9 +453,8 @@ const PaymentPage = () => {
     const result = await processSlipWithOCR(formData.slipImage);
     setOcrResult(result);
     
-    // ตรวจสอบผลลัพธ์เหมือนกับการ upload ครั้งแรก
     if (result.success) {
-      const expectedAmount = bookingData?.totalPrice || 0;
+      const expectedAmount = totalPrice;
       
       if (result.amount === expectedAmount) {
         setIsOCRVerified(true);
@@ -391,7 +512,7 @@ const PaymentPage = () => {
             กลับ
           </button>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">ชำระเงิน</h1>
-          <p className="text-slate-600">กรุณาชำระเงินภายในเวลาที่กำหนด</p>
+          <p className="text-slate-600">เลือกวันที่จองและชำระเงินภายในเวลาที่กำหนด</p>
         </div>
 
         {/* OCR Status Banner */}
@@ -442,14 +563,14 @@ const PaymentPage = () => {
                 </div>
                 
                 {/* Booking Dates List */}
-                {bookingData.bookingDates && bookingData.bookingDates.length > 0 && (
+                {selectedDates.length > 0 && (
                   <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
                     <div className="flex items-center gap-2 mb-2">
                       <CalendarDays className="w-4 h-4 text-blue-600" />
-                      <span className="text-slate-700 font-medium">วันที่จอง ({bookingData.bookingDates.length} วัน):</span>
+                      <span className="text-slate-700 font-medium">วันที่จอง ({selectedDates.length} วัน):</span>
                     </div>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {bookingData.bookingDates.map((date, idx) => (
+                      {selectedDates.map((date, idx) => (
                         <div key={date} className="text-sm flex items-center gap-2 py-1">
                           <span className="text-blue-600 font-bold">#{idx + 1}</span>
                           <span className="text-slate-700">{formatDateThai(date)}</span>
@@ -462,21 +583,23 @@ const PaymentPage = () => {
                 <div className="p-3 bg-slate-50 rounded-lg">
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-slate-600">ราคาต่อวัน:</span>
-                    <span className="font-bold">฿{bookingData.pricePerDay?.toLocaleString() || bookingData.stall.price.toLocaleString()}</span>
+                    <span className="font-bold">฿{bookingData.stall.price.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">คำนวณ:</span>
-                    <span className="text-slate-700">
-                      ฿{bookingData.pricePerDay?.toLocaleString() || bookingData.stall.price.toLocaleString()} × {bookingData.numberOfDays} วัน
-                    </span>
-                  </div>
+                  {selectedDates.length > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">คำนวณ:</span>
+                      <span className="text-slate-700">
+                        ฿{bookingData.stall.price.toLocaleString()} × {selectedDates.length} วัน
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t-2 border-slate-200 pt-3">
                   <div className="flex justify-between text-xl p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-300 shadow-md">
                     <span className="text-slate-800 font-bold">ยอดชำระรวม:</span>
                     <span className="font-bold text-green-600">
-                      ฿{bookingData.totalPrice.toLocaleString()}
+                      ฿{totalPrice.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -510,22 +633,137 @@ const PaymentPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
-                  <p className="text-sm text-red-800">
-                    <strong>⚠️ สำคัญมาก:</strong> โอนตามยอดที่แสดงเท่านั้น{' '}
-                    <strong className="text-red-900 text-base">฿{bookingData.totalPrice.toLocaleString()}</strong>
-                    <br />
-                    <span className="text-xs">ระบบจะตรวจสอบจำนวนเงินอัตโนมัติด้วย AI - หากไม่ตรงจะไม่สามารถชำระได้</span>
-                  </p>
-                </div>
+                {totalPrice > 0 && (
+                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
+                    <p className="text-sm text-red-800">
+                      <strong>⚠️ สำคัญมาก:</strong> โอนตามยอดที่แสดงเท่านั้น{' '}
+                      <strong className="text-red-900 text-base">฿{totalPrice.toLocaleString()}</strong>
+                      <br />
+                      <span className="text-xs">ระบบจะตรวจสอบจำนวนเงินอัตโนมัติด้วย AI - หากไม่ตรงจะไม่สามารถชำระได้</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right Side - Form & Upload */}
+          {/* Right Side - Date Selection & Form */}
           <div>
             <form onSubmit={handleSubmitPayment} className="space-y-6">
               
+              {/* Date Selection */}
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-blue-600" />
+                  เลือกวันที่จอง
+                  <span className="text-red-500">*</span>
+                </h3>
+
+                {/* Weekend Only Notice */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-purple-800">
+                    <strong>📅 ตลาดนัดถนนคนเดิน</strong> เปิดทุกวันเสาร์-อาทิตย์เท่านั้น
+                  </p>
+                </div>
+
+                {/* Quick Add Buttons */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-slate-700 mb-2">📅 จองแบบด่วน:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAddDates('weekend')}
+                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-all"
+                    >
+                      สุดสัปดาห์นี้
+                      <div className="text-xs text-slate-600">(2 วัน)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAddDates('2weekends')}
+                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 hover:border-purple-400 transition-all"
+                    >
+                      2 สุดสัปดาห์
+                      <div className="text-xs text-slate-600">(4 วัน)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAddDates('4weekends')}
+                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-green-300 text-green-700 rounded-lg hover:bg-green-100 hover:border-green-400 transition-all"
+                    >
+                      4 สุดสัปดาห์
+                      <div className="text-xs text-slate-600">(8 วัน)</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add Date Input */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    เพิ่มวันที่จอง <span className="text-purple-600">(เสาร์-อาทิตย์)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      min={getNextSaturday()}
+                      className="flex-1 px-3 py-2 text-sm border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDate}
+                      disabled={!newDate}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      เพิ่ม
+                    </button>
+                  </div>
+                </div>
+
+                {/* Selected Dates List */}
+                {selectedDates.length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
+                    <p className="text-sm font-semibold text-slate-700 mb-2">
+                      วันที่เลือก ({selectedDates.length} วัน)
+                    </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {selectedDates.map((date, index) => (
+                        <div
+                          key={date}
+                          className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-blue-200"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded">
+                              #{index + 1}
+                            </span>
+                            <span className="text-sm font-medium text-slate-800">
+                              {formatDateThai(date)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDate(date)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedDates.length === 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ กรุณาเลือกวันที่จองอย่างน้อย 1 วัน
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Contact Info */}
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <h3 className="font-semibold text-slate-900 mb-4">ข้อมูลติดต่อ</h3>
@@ -619,7 +857,7 @@ const PaymentPage = () => {
               </div>
 
               {/* Upload Slip with OCR */}
-              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && (
+              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && totalPrice > 0 && (
                 <div className="bg-white rounded-2xl shadow-xl p-6">
                   <div className="flex items-center justify-between mb-4">
                     <label className="flex items-center gap-2 text-slate-700 font-bold">
@@ -642,7 +880,7 @@ const PaymentPage = () => {
                         <p className="font-bold">🤖 ระบบตรวจสอบอัตโนมัติด้วย AI OCR</p>
                         <p className="mt-1">✓ อ่านและตรวจสอบจำนวนเงินจากสลิปอัตโนมัติ</p>
                         <p className="text-red-700 font-semibold mt-1">
-                          ⚠️ จำนวนเงินต้องตรงกับยอดชำระ: ฿{bookingData.totalPrice.toLocaleString()}
+                          ⚠️ จำนวนเงินต้องตรงกับยอดชำระ: ฿{totalPrice.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -672,9 +910,11 @@ const PaymentPage = () => {
                               <div>
                                 <p className="font-bold text-slate-700">📸 คลิกเพื่ออัปโหลดสลิป</p>
                                 <p className="text-xs text-slate-500 mt-1">JPG, PNG (ไม่เกิน 10MB)</p>
-                                <p className="text-xs text-red-600 font-medium mt-2">
-                                  จำนวนเงินต้องเป็น ฿{bookingData.totalPrice.toLocaleString()}
-                                </p>
+                                {totalPrice > 0 && (
+                                  <p className="text-xs text-red-600 font-medium mt-2">
+                                    จำนวนเงินต้องเป็น ฿{totalPrice.toLocaleString()}
+                                  </p>
+                                )}
                               </div>
                             </>
                           )}
@@ -760,7 +1000,7 @@ const PaymentPage = () => {
                                     <div className="bg-blue-50 p-2 rounded border border-blue-300">
                                       <p className="text-xs text-slate-600">ยอดที่ต้องชำระ</p>
                                       <p className="font-bold text-blue-700 text-lg">
-                                        ฿{bookingData.totalPrice.toLocaleString()}
+                                        ฿{totalPrice.toLocaleString()}
                                       </p>
                                     </div>
                                   </div>
@@ -888,9 +1128,9 @@ const PaymentPage = () => {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={processing || ocrProcessing || (paymentMethod !== 'creditcard' && !isOCRVerified)}
+                  disabled={processing || ocrProcessing || selectedDates.length === 0 || (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)}
                   className={`flex-1 font-bold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-3 text-white text-lg ${
-                    processing || ocrProcessing || (paymentMethod !== 'creditcard' && !isOCRVerified)
+                    processing || ocrProcessing || selectedDates.length === 0 || (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)
                       ? 'bg-slate-400 cursor-not-allowed'
                       : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
                   }`}
@@ -905,7 +1145,12 @@ const PaymentPage = () => {
                       <Loader2 className="animate-spin h-6 w-6" />
                       กำลังตรวจสอบสลิป...
                     </>
-                  ) : !isOCRVerified && paymentMethod !== 'creditcard' ? (
+                  ) : selectedDates.length === 0 ? (
+                    <>
+                      <AlertCircle className="h-6 w-6" />
+                      กรุณาเลือกวันที่จอง
+                    </>
+                  ) : !isOCRVerified && paymentMethod !== 'creditcard' && totalPrice > 0 ? (
                     <>
                       <AlertCircle className="h-6 w-6" />
                       กรุณาอัปโหลดสลิปที่ถูกต้อง
@@ -913,7 +1158,7 @@ const PaymentPage = () => {
                   ) : (
                     <>
                       <Check className="h-6 w-6" />
-                      ยืนยันชำระเงิน ฿{bookingData.totalPrice.toLocaleString()}
+                      ยืนยันชำระเงิน ฿{totalPrice.toLocaleString()}
                     </>
                   )}
                 </button>
@@ -922,7 +1167,6 @@ const PaymentPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    // ข้ามการชำระเงินไปเลย
                     router.push('/booking/success');
                   }}
                   disabled={processing}
@@ -934,12 +1178,21 @@ const PaymentPage = () => {
               </div>
 
               {/* Warning */}
-              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && !isOCRVerified && (
+              {selectedDates.length === 0 && (
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3">
+                  <p className="text-xs text-yellow-800 text-center">
+                    <strong>⚠️ กรุณาเลือกวันที่จอง</strong><br />
+                    เลือกวันที่จากด้านบนเพื่อดำเนินการต่อ
+                  </p>
+                </div>
+              )}
+
+              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && totalPrice > 0 && !isOCRVerified && selectedDates.length > 0 && (
                 <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-3">
                   <p className="text-xs text-orange-800 text-center">
                     <strong>⚠️ ยังไม่สามารถชำระได้</strong><br />
                     กรุณาอัปโหลดสลิปที่มีจำนวนเงิน{' '}
-                    <strong>฿{bookingData.totalPrice.toLocaleString()}</strong>
+                    <strong>฿{totalPrice.toLocaleString()}</strong>
                   </p>
                 </div>
               )}
