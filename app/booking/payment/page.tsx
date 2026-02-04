@@ -2,7 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Building2, Smartphone, Check, Clock, AlertCircle, ArrowLeft, Upload, CalendarDays, Scan, X, FileCheck, Loader2, RotateCw, XCircle, CheckCircle, Plus } from 'lucide-react';
+import { 
+  CreditCard, 
+  Building2, 
+  Smartphone, 
+  Check, 
+  Clock, 
+  AlertCircle, 
+  ArrowLeft, 
+  Upload, 
+  CalendarDays, 
+  Scan, 
+  X, 
+  FileCheck, 
+  Loader2, 
+  RotateCw, 
+  XCircle, 
+  CheckCircle, 
+  Plus,
+  MapPin,
+  DollarSign,
+  Info,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 
 interface BookingData {
   stall: {
@@ -51,6 +74,7 @@ const PaymentPage = () => {
   const [showOCRDetails, setShowOCRDetails] = useState(false);
   const [ocrAttempts, setOcrAttempts] = useState(0);
   const [isOCRVerified, setIsOCRVerified] = useState(false);
+  const [showBankInfo, setShowBankInfo] = useState(false);
 
   // Multiple dates selection
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
@@ -67,6 +91,9 @@ const PaymentPage = () => {
     cvv: '',
     slipImage: null as File | null
   });
+
+  // Current step
+  const [currentStep, setCurrentStep] = useState(1); // 1: Dates, 2: Contact, 3: Payment
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
@@ -284,12 +311,12 @@ const PaymentPage = () => {
     setIsOCRVerified(false);
 
     if (file.size > 10 * 1024 * 1024) {
-      setError("❌ ไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ที่มีขนาดไม่เกิน 10MB");
+      setError("ไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ไม่เกิน 10MB");
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      setError("❌ กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG)");
+      setError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
       return;
     }
 
@@ -314,73 +341,43 @@ const PaymentPage = () => {
         setError('');
       } else if (!result.amount) {
         setIsOCRVerified(false);
-        setError('❌ ไม่สามารถอ่านจำนวนเงินจากสลิปได้ กรุณาอัปโหลดสลิปที่ชัดเจนกว่า');
+        setError('ไม่สามารถอ่านจำนวนเงินจากสลิปได้');
       } else {
         setIsOCRVerified(false);
-        const diff = Math.abs((result.amount || 0) - expectedAmount);
-        setError(
-          `❌ จำนวนเงินในสลิปไม่ตรงกับยอดที่ต้องชำระ\n` +
-          `• ยอดที่ต้องชำระ: ฿${expectedAmount.toLocaleString()}\n` +
-          `• จำนวนในสลิป: ฿${result.amount.toLocaleString()}\n` +
-          `• แตกต่างกัน: ฿${diff.toLocaleString()}\n\n` +
-          `กรุณาโอนเงินตามจำนวนที่ถูกต้องและอัปโหลดสลิปใหม่`
-        );
+        setError(`จำนวนเงินไม่ตรงกัน: ต้องการ ฿${expectedAmount.toLocaleString()} แต่ในสลิปเป็น ฿${result.amount.toLocaleString()}`);
       }
     } else {
       setIsOCRVerified(false);
-      const errorMsg = result.errors?.join('\n• ') || 'ไม่สามารถอ่านข้อมูลจากสลิปได้';
-      setError(
-        `❌ ไม่สามารถตรวจสอบสลิปได้\n• ${errorMsg}\n\n` +
-        `💡 คำแนะนำ:\n` +
-        `• ถ่ายภาพให้ชัดเจน ไม่เบลอ\n` +
-        `• มีแสงเพียงพอ ไม่มีเงาบดบัง\n` +
-        `• ถ่ายให้เห็นข้อมูลครบถ้วน\n` +
-        `• ใช้สลิปจากธนาคารที่รองรับ (ธนาคารไทยทุกธนาคาร)`
-      );
+      setError(result.errors?.[0] || 'ไม่สามารถอ่านสลิปได้ กรุณาอัปโหลดภาพที่ชัดเจนกว่า');
     }
   };
 
   const validateForm = () => {
     if (!formData.name || !formData.email || !formData.phone) {
-      setError('❌ กรุณากรอกข้อมูลติดต่อให้ครบถ้วน');
+      setError('กรุณากรอกข้อมูลติดต่อให้ครบถ้วน');
       return false;
     }
 
     if (selectedDates.length === 0) {
-      setError('❌ กรุณาเลือกวันที่จองอย่างน้อย 1 วัน');
+      setError('กรุณาเลือกวันที่จองอย่างน้อย 1 วัน');
       return false;
     }
 
     if (paymentMethod === 'creditcard') {
       if (!formData.cardNumber || !formData.expiryDate || !formData.cvv) {
-        setError('❌ กรุณากรอกข้อมูลบัตรเครดิตให้ครบถ้วน');
+        setError('กรุณากรอกข้อมูลบัตรเครดิตให้ครบถ้วน');
         return false;
       }
     }
 
     if (paymentMethod === 'bank' || paymentMethod === 'promptpay') {
       if (!formData.slipImage) {
-        setError('❌ กรุณาอัพโหลดสลิปการโอนเงิน');
-        return false;
-      }
-
-      if (!ocrResult || !ocrResult.success) {
-        setError('❌ ไม่สามารถตรวจสอบสลิปได้ กรุณาอัปโหลดสลิปที่ชัดเจนกว่า');
+        setError('กรุณาอัพโหลดสลิปการโอนเงิน');
         return false;
       }
 
       if (!isOCRVerified) {
-        setError('❌ สลิปยังไม่ผ่านการตรวจสอบ กรุณาอัปโหลดสลิปที่มีจำนวนเงินถูกต้อง');
-        return false;
-      }
-
-      if (ocrResult.amount !== totalPrice) {
-        setError(`❌ จำนวนเงินไม่ตรงกัน (ต้องการ: ฿${totalPrice.toLocaleString()}, ในสลิป: ฿${ocrResult.amount?.toLocaleString() || '0'})`);
-        return false;
-      }
-
-      if ((ocrResult.confidence || 0) < 0.7) {
-        setError(`❌ ความชัดเจนของสลิปไม่เพียงพอ (${((ocrResult.confidence || 0) * 100).toFixed(0)}%) กรุณาอัปโหลดสลิปที่ชัดเจนกว่า`);
+        setError('สลิปยังไม่ผ่านการตรวจสอบ');
         return false;
       }
     }
@@ -431,7 +428,7 @@ const PaymentPage = () => {
       localStorage.removeItem('pendingBooking');
       router.push('/booking/success?stall=' + bookingData?.stall.number);
     } catch (err) {
-      setError('❌ เกิดข้อผิดพลาดในการชำระเงิน: ' + (err instanceof Error ? err.message : 'กรุณาลองใหม่อีกครั้ง'));
+      setError('เกิดข้อผิดพลาด: ' + (err instanceof Error ? err.message : 'กรุณาลองใหม่'));
       setProcessing(false);
     }
   };
@@ -453,45 +450,20 @@ const PaymentPage = () => {
     const result = await processSlipWithOCR(formData.slipImage);
     setOcrResult(result);
     
-    if (result.success) {
-      const expectedAmount = totalPrice;
-      
-      if (result.amount === expectedAmount) {
-        setIsOCRVerified(true);
-        setError('');
-      } else if (!result.amount) {
-        setIsOCRVerified(false);
-        setError('❌ ไม่สามารถอ่านจำนวนเงินจากสลิปได้ กรุณาอัปโหลดสลิปที่ชัดเจนกว่า');
-      } else {
-        setIsOCRVerified(false);
-        const diff = Math.abs((result.amount || 0) - expectedAmount);
-        setError(
-          `❌ จำนวนเงินในสลิปไม่ตรงกับยอดที่ต้องชำระ\n` +
-          `• ยอดที่ต้องชำระ: ฿${expectedAmount.toLocaleString()}\n` +
-          `• จำนวนในสลิป: ฿${result.amount.toLocaleString()}\n` +
-          `• แตกต่างกัน: ฿${diff.toLocaleString()}\n\n` +
-          `กรุณาโอนเงินตามจำนวนที่ถูกต้องและอัปโหลดสลิปใหม่`
-        );
-      }
+    if (result.success && result.amount === totalPrice) {
+      setIsOCRVerified(true);
+      setError('');
     } else {
       setIsOCRVerified(false);
-      const errorMsg = result.errors?.join('\n• ') || 'ไม่สามารถอ่านข้อมูลจากสลิปได้';
-      setError(
-        `❌ ไม่สามารถตรวจสอบสลิปได้\n• ${errorMsg}\n\n` +
-        `💡 คำแนะนำ:\n` +
-        `• ถ่ายภาพให้ชัดเจน ไม่เบลอ\n` +
-        `• มีแสงเพียงพอ ไม่มีเงาบดบัง\n` +
-        `• ถ่ายให้เห็นข้อมูลครบถ้วน\n` +
-        `• ใช้สลิปจากธนาคารที่รองรับ (ธนาคารไทยทุกธนาคาร)`
-      );
+      setError(result.errors?.[0] || 'จำนวนเงินไม่ตรงกัน');
     }
   };
 
   if (!bookingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-slate-600">กำลังโหลด...</p>
         </div>
       </div>
@@ -499,208 +471,216 @@ const PaymentPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-6">
+      <div className="max-w-5xl mx-auto px-4">
         
         {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-blue-600 hover:text-blue-700 mb-4 font-medium transition-colors"
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4 font-medium transition-colors"
           >
-            <ArrowLeft className="h-5 w-5 mr-2" />
+            <ArrowLeft className="w-5 h-5" />
             กลับ
           </button>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">ชำระเงิน</h1>
-          <p className="text-slate-600">เลือกวันที่จองและชำระเงินภายในเวลาที่กำหนด</p>
+          <h1 className="text-3xl font-bold text-slate-900">ชำระเงิน</h1>
         </div>
 
-        {/* OCR Status Banner */}
-        {isOCRVerified && (
-          <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 p-4 rounded-xl shadow-lg">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-7 w-7 text-green-600 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-bold text-green-800 text-lg">✓ สลิปผ่านการตรวจสอบแล้ว</p>
-                <p className="text-sm text-green-700">
-                  จำนวนเงิน ฿{ocrResult?.amount?.toLocaleString()} ถูกต้อง - พร้อมชำระเงิน
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Timer Alert */}
-        <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-md">
-          <div className="flex items-center">
-            <Clock className="h-5 w-5 text-orange-600 mr-3 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-orange-800">
-                เหลือเวลา: <strong className="text-xl font-bold">{formatTime(timeLeft)}</strong>
+        {/* Timer */}
+        <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 rounded-r-lg p-4">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-orange-600" />
+            <div>
+              <p className="text-sm font-medium text-orange-900">
+                เหลือเวลา: <span className="text-xl font-bold">{formatTime(timeLeft)}</span>
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Left Side - Booking Summary */}
-          <div>
-            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-              <h3 className="font-bold text-lg text-slate-800 mb-4">สรุปการจอง</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-slate-600">ช่องที่:</span>
-                  <span className="font-bold text-blue-600">{bookingData.stall.number}</span>
-                </div>
-                <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-slate-600">โซน:</span>
-                  <span className="font-bold">Zone {bookingData.stall.zone}</span>
-                </div>
-                <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-slate-600">ขนาด:</span>
-                  <span className="font-bold text-sm">{bookingData.stall.size}</span>
-                </div>
-                
-                {/* Booking Dates List */}
-                {selectedDates.length > 0 && (
-                  <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CalendarDays className="w-4 h-4 text-blue-600" />
-                      <span className="text-slate-700 font-medium">วันที่จอง ({selectedDates.length} วัน):</span>
-                    </div>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {selectedDates.map((date, idx) => (
-                        <div key={date} className="text-sm flex items-center gap-2 py-1">
-                          <span className="text-blue-600 font-bold">#{idx + 1}</span>
-                          <span className="text-slate-700">{formatDateThai(date)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-3 bg-slate-50 rounded-lg">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-600">ราคาต่อวัน:</span>
-                    <span className="font-bold">฿{bookingData.stall.price.toLocaleString()}</span>
-                  </div>
-                  {selectedDates.length > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">คำนวณ:</span>
-                      <span className="text-slate-700">
-                        ฿{bookingData.stall.price.toLocaleString()} × {selectedDates.length} วัน
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t-2 border-slate-200 pt-3">
-                  <div className="flex justify-between text-xl p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-300 shadow-md">
-                    <span className="text-slate-800 font-bold">ยอดชำระรวม:</span>
-                    <span className="font-bold text-green-600">
-                      ฿{totalPrice.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bank Account Info */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" />
-                ข้อมูลบัญชีสำหรับโอนเงิน
-              </h3>
-              <div className="space-y-3">
-                <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-slate-600">ธนาคาร:</p>
-                      <p className="font-bold text-slate-800">กรุงเทพ (BBL)</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-600">สาขา:</p>
-                      <p className="font-bold text-slate-800">สาขาหลัก</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-slate-600">เลขที่บัญชี:</p>
-                      <p className="font-bold text-blue-600 text-lg">123-4-56789-0</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-slate-600">ชื่อบัญชี:</p>
-                      <p className="font-bold text-slate-800">บริษัท ตลาดนัด จำกัด</p>
-                    </div>
-                  </div>
-                </div>
-                {totalPrice > 0 && (
-                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
-                    <p className="text-sm text-red-800">
-                      <strong>⚠️ สำคัญมาก:</strong> โอนตามยอดที่แสดงเท่านั้น{' '}
-                      <strong className="text-red-900 text-base">฿{totalPrice.toLocaleString()}</strong>
-                      <br />
-                      <span className="text-xs">ระบบจะตรวจสอบจำนวนเงินอัตโนมัติด้วย AI - หากไม่ตรงจะไม่สามารถชำระได้</span>
-                    </p>
-                  </div>
-                )}
+        {/* OCR Success Banner */}
+        {isOCRVerified && (
+          <div className="mb-6 bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="font-bold text-green-900">สลิปผ่านการตรวจสอบ</p>
+                <p className="text-sm text-green-700">จำนวนเงิน ฿{ocrResult?.amount?.toLocaleString()} ถูกต้อง</p>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Right Side - Date Selection & Form */}
-          <div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          
+          {/* Left: Summary (Sticky) */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-blue-600" />
+                สรุปการจอง
+              </h3>
+
+              <div className="space-y-3 mb-4">
+                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                  <span className="text-slate-600 text-sm">ช่องที่:</span>
+                  <span className="font-bold text-blue-600 text-lg">{bookingData.stall.number}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                  <span className="text-slate-600 text-sm">โซน:</span>
+                  <span className="font-semibold">Zone {bookingData.stall.zone}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <span className="text-slate-600 text-sm block mb-1">ขนาด:</span>
+                  <span className="font-medium text-sm">{bookingData.stall.size}</span>
+                </div>
+              </div>
+
+              {/* Selected Dates */}
+              {selectedDates.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarDays className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">
+                      วันที่จอง ({selectedDates.length} วัน)
+                    </span>
+                  </div>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {selectedDates.slice(0, 3).map((date, idx) => (
+                      <div key={date} className="text-xs text-slate-700">
+                        {idx + 1}. {formatDateThai(date)}
+                      </div>
+                    ))}
+                    {selectedDates.length > 3 && (
+                      <div className="text-xs text-blue-600 font-medium">
+                        และอีก {selectedDates.length - 3} วัน
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Price Calculation */}
+              <div className="border-t pt-4">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-600">ราคา/วัน:</span>
+                  <span className="font-semibold">฿{bookingData.stall.price.toLocaleString()}</span>
+                </div>
+                {selectedDates.length > 0 && (
+                  <div className="flex justify-between text-sm text-slate-600 mb-3">
+                    <span>× {selectedDates.length} วัน</span>
+                    <span>฿{totalPrice.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-400">
+                  <span className="font-bold text-slate-900">ยอดชำระ:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    ฿{totalPrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bank Info - Collapsible */}
+              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowBankInfo(!showBankInfo)}
+                    className="w-full flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-900">ข้อมูลบัญชี</span>
+                    </div>
+                    {showBankInfo ? (
+                      <ChevronUp className="w-4 h-4 text-blue-600" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-blue-600" />
+                    )}
+                  </button>
+                  
+                  {showBankInfo && (
+                    <div className="mt-2 p-3 bg-white border border-blue-200 rounded-lg text-sm">
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-slate-500">ธนาคาร</p>
+                          <p className="font-semibold">กรุงเทพ (BBL)</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">เลขที่บัญชี</p>
+                          <p className="font-bold text-blue-600">123-4-56789-0</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">ชื่อบัญชี</p>
+                          <p className="font-semibold">บริษัท ตลาดนัด จำกัด</p>
+                        </div>
+                      </div>
+                      {totalPrice > 0 && (
+                        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                          <p className="text-xs text-red-800">
+                            <strong>⚠️ โอนตามยอดเท่านั้น:</strong> ฿{totalPrice.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Form */}
+          <div className="lg:col-span-2">
             <form onSubmit={handleSubmitPayment} className="space-y-6">
               
-              {/* Date Selection */}
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-blue-600" />
-                  เลือกวันที่จอง
-                  <span className="text-red-500">*</span>
-                </h3>
+              {/* Step 1: Select Dates */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    1
+                  </div>
+                  <h3 className="font-bold text-lg">เลือกวันที่จอง</h3>
+                </div>
 
-                {/* Weekend Only Notice */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-purple-800">
-                    <strong>📅 ตลาดนัดถนนคนเดิน</strong> เปิดทุกวันเสาร์-อาทิตย์เท่านั้น
+                {/* Info */}
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-900">
+                    📅 <strong>ตลาดนัด</strong> เปิดทุกวันเสาร์-อาทิตย์
                   </p>
                 </div>
 
-                {/* Quick Add Buttons */}
+                {/* Quick Select */}
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">📅 จองแบบด่วน:</p>
+                  <p className="text-sm font-medium text-slate-700 mb-2">จองแบบเร็ว:</p>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => handleQuickAddDates('weekend')}
-                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-all"
+                      className="px-3 py-2 text-sm bg-blue-50 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium"
                     >
                       สุดสัปดาห์นี้
-                      <div className="text-xs text-slate-600">(2 วัน)</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickAddDates('2weekends')}
-                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 hover:border-purple-400 transition-all"
+                      className="px-3 py-2 text-sm bg-purple-50 border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors font-medium"
                     >
-                      2 สุดสัปดาห์
-                      <div className="text-xs text-slate-600">(4 วัน)</div>
+                      2 สัปดาห์
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickAddDates('4weekends')}
-                      className="px-3 py-2 text-sm font-medium bg-white border-2 border-green-300 text-green-700 rounded-lg hover:bg-green-100 hover:border-green-400 transition-all"
+                      className="px-3 py-2 text-sm bg-green-50 border border-green-300 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium"
                     >
-                      4 สุดสัปดาห์
-                      <div className="text-xs text-slate-600">(8 วัน)</div>
+                      4 สัปดาห์
                     </button>
                   </div>
                 </div>
 
-                {/* Add Date Input */}
-                <div className="mb-3">
+                {/* Manual Add */}
+                <div className="mb-4">
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    เพิ่มวันที่จอง <span className="text-purple-600">(เสาร์-อาทิตย์)</span>
+                    หรือเลือกเอง:
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -708,13 +688,13 @@ const PaymentPage = () => {
                       value={newDate}
                       onChange={(e) => setNewDate(e.target.value)}
                       min={getNextSaturday()}
-                      className="flex-1 px-3 py-2 text-sm border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <button
                       type="button"
                       onClick={handleAddDate}
                       disabled={!newDate}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 transition-colors flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
                       เพิ่ม
@@ -722,30 +702,25 @@ const PaymentPage = () => {
                   </div>
                 </div>
 
-                {/* Selected Dates List */}
-                {selectedDates.length > 0 && (
-                  <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
-                    <p className="text-sm font-semibold text-slate-700 mb-2">
-                      วันที่เลือก ({selectedDates.length} วัน)
+                {/* Selected List */}
+                {selectedDates.length > 0 ? (
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">
+                      เลือกแล้ว ({selectedDates.length} วัน)
                     </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {selectedDates.map((date, index) => (
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {selectedDates.map((date, idx) => (
                         <div
                           key={date}
-                          className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-blue-200"
+                          className="flex items-center justify-between bg-white px-3 py-2 rounded border border-blue-200"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-200 px-2 py-1 rounded">
-                              #{index + 1}
-                            </span>
-                            <span className="text-sm font-medium text-slate-800">
-                              {formatDateThai(date)}
-                            </span>
-                          </div>
+                          <span className="text-sm font-medium text-slate-800">
+                            {idx + 1}. {formatDateThai(date)}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveDate(date)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-all"
+                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -753,10 +728,8 @@ const PaymentPage = () => {
                       ))}
                     </div>
                   </div>
-                )}
-
-                {selectedDates.length === 0 && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <p className="text-sm text-yellow-800">
                       ⚠️ กรุณาเลือกวันที่จองอย่างน้อย 1 วัน
                     </p>
@@ -764,10 +737,16 @@ const PaymentPage = () => {
                 )}
               </div>
 
-              {/* Contact Info */}
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="font-semibold text-slate-900 mb-4">ข้อมูลติดต่อ</h3>
-                <div className="space-y-4">
+              {/* Step 2: Contact Info */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    2
+                  </div>
+                  <h3 className="font-bold text-lg">ข้อมูลติดต่อ</h3>
+                </div>
+
+                <div className="grid gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       ชื่อ-นามสกุล <span className="text-red-500">*</span>
@@ -782,41 +761,51 @@ const PaymentPage = () => {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      อีเมล <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="example@email.com"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      เบอร์โทร <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="0xx-xxx-xxxx"
-                      required
-                    />
+                  
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        อีเมล <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="example@email.com"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        เบอร์โทร <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0xx-xxx-xxxx"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h3 className="font-semibold text-slate-900 mb-4">วิธีการชำระเงิน</h3>
-                <div className="grid grid-cols-3 gap-4">
+              {/* Step 3: Payment */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    3
+                  </div>
+                  <h3 className="font-bold text-lg">ชำระเงิน</h3>
+                </div>
+
+                {/* Payment Methods */}
+                <div className="grid grid-cols-3 gap-3 mb-6">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('promptpay')}
@@ -826,7 +815,7 @@ const PaymentPage = () => {
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <Smartphone className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <Smartphone className="w-8 h-8 mx-auto mb-2 text-blue-600" />
                     <p className="text-sm font-medium">PromptPay</p>
                   </button>
                   <button
@@ -838,7 +827,7 @@ const PaymentPage = () => {
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <Building2 className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <Building2 className="w-8 h-8 mx-auto mb-2 text-blue-600" />
                     <p className="text-sm font-medium">โอนธนาคาร</p>
                   </button>
                   <button
@@ -850,352 +839,285 @@ const PaymentPage = () => {
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <CreditCard className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <CreditCard className="w-8 h-8 mx-auto mb-2 text-blue-600" />
                     <p className="text-sm font-medium">บัตรเครดิต</p>
                   </button>
                 </div>
-              </div>
 
-              {/* Upload Slip with OCR */}
-              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && totalPrice > 0 && (
-                <div className="bg-white rounded-2xl shadow-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="flex items-center gap-2 text-slate-700 font-bold">
-                      <Scan className="w-5 h-5 text-blue-600" />
-                      อัปโหลดสลิปการโอนเงิน
-                      <span className="text-red-500">*</span>
-                    </label>
-                    {ocrAttempts > 0 && (
-                      <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                        ครั้งที่: {ocrAttempts}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* OCR Info */}
-                  <div className="mb-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-3">
-                    <div className="flex items-start gap-2">
-                      <Scan className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs text-blue-800">
-                        <p className="font-bold">🤖 ระบบตรวจสอบอัตโนมัติด้วย AI OCR</p>
-                        <p className="mt-1">✓ อ่านและตรวจสอบจำนวนเงินจากสลิปอัตโนมัติ</p>
-                        <p className="text-red-700 font-semibold mt-1">
-                          ⚠️ จำนวนเงินต้องตรงกับยอดชำระ: ฿{totalPrice.toLocaleString()}
-                        </p>
+                {/* Upload Slip */}
+                {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && totalPrice > 0 && (
+                  <div>
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <Scan className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-blue-900">
+                          <p className="font-bold">ระบบตรวจสอบอัตโนมัติ (AI OCR)</p>
+                          <p className="mt-1">จำนวนเงินต้องเป็น: <strong className="text-red-600">฿{totalPrice.toLocaleString()}</strong></p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {!slipPreview ? (
-                    <div className="border-2 border-dashed rounded-xl p-6 text-center hover:border-blue-400 transition-all cursor-pointer bg-slate-50 border-slate-300">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="slip-upload"
-                        disabled={ocrProcessing}
-                      />
-                      <label htmlFor="slip-upload" className="cursor-pointer">
-                        <div className="space-y-3">
+                    {!slipPreview ? (
+                      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors bg-slate-50">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                          id="slip-upload"
+                          disabled={ocrProcessing}
+                        />
+                        <label htmlFor="slip-upload" className="cursor-pointer">
                           {ocrProcessing ? (
-                            <>
+                            <div className="space-y-3">
                               <Loader2 className="w-12 h-12 mx-auto text-blue-500 animate-spin" />
-                              <p className="font-bold text-blue-600">🔍 กำลังอ่านสลิป...</p>
-                              <p className="text-xs text-blue-500">กำลังใช้ AI ตรวจสอบ กรุณารอสักครู่</p>
-                            </>
+                              <p className="font-bold text-blue-600">กำลังตรวจสอบ...</p>
+                            </div>
                           ) : (
-                            <>
+                            <div className="space-y-3">
                               <Upload className="w-12 h-12 mx-auto text-slate-400" />
                               <div>
-                                <p className="font-bold text-slate-700">📸 คลิกเพื่ออัปโหลดสลิป</p>
-                                <p className="text-xs text-slate-500 mt-1">JPG, PNG (ไม่เกิน 10MB)</p>
-                                {totalPrice > 0 && (
-                                  <p className="text-xs text-red-600 font-medium mt-2">
-                                    จำนวนเงินต้องเป็น ฿{totalPrice.toLocaleString()}
-                                  </p>
-                                )}
+                                <p className="font-bold text-slate-700">คลิกเพื่ออัปโหลดสลิป</p>
+                                <p className="text-sm text-slate-500 mt-1">JPG, PNG (ไม่เกิน 10MB)</p>
                               </div>
-                            </>
+                            </div>
                           )}
-                        </div>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Preview */}
-                      <div className="relative">
-                        <img 
-                          src={slipPreview} 
-                          alt="Payment Slip" 
-                          className="max-w-full max-h-80 mx-auto rounded-xl shadow-lg border-4 border-slate-200"
-                        />
-                        <div className="absolute top-2 right-2 flex gap-2">
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Preview */}
+                        <div className="relative">
+                          <img 
+                            src={slipPreview} 
+                            alt="Slip" 
+                            className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg border-2 border-slate-200"
+                          />
                           <button
                             type="button"
                             onClick={removeSlip}
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg"
+                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        {ocrResult && !ocrProcessing && (
-                          <button
-                            type="button"
-                            onClick={retryOCR}
-                            className="absolute bottom-2 right-2 bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 shadow-lg flex items-center gap-1 text-sm"
-                          >
-                            <RotateCw className="w-3 h-3" />
-                            อ่านใหม่
-                          </button>
-                        )}
-                      </div>
 
-                      {/* Processing */}
-                      {ocrProcessing && (
-                        <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
-                          <div className="flex items-center gap-3">
-                            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                            <div className="flex-1">
-                              <p className="font-bold text-blue-800">🔍 กำลังวิเคราะห์สลิป...</p>
-                              <p className="text-xs text-blue-600 mt-1">AI กำลังอ่านและตรวจสอบข้อมูล</p>
-                            </div>
+                        {/* Processing */}
+                        {ocrProcessing && (
+                          <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 flex items-center gap-3">
+                            <Loader2 className="w-5 h-5 text-blue-600 animate-spin flex-shrink-0" />
+                            <p className="text-sm font-medium text-blue-900">กำลังตรวจสอบสลิป...</p>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* OCR Result */}
-                      {!ocrProcessing && ocrResult && (
-                        <div className={`border-2 rounded-xl p-4 ${
-                          isOCRVerified
-                            ? 'bg-green-50 border-green-400'
-                            : 'bg-red-50 border-red-400'
-                        }`}>
-                          <div className="flex items-start gap-3">
-                            {isOCRVerified ? (
-                              <FileCheck className="w-7 h-7 text-green-600 flex-shrink-0" />
-                            ) : (
-                              <XCircle className="w-7 h-7 text-red-600 flex-shrink-0" />
-                            )}
-                            <div className="flex-1">
-                              <p className={`font-bold text-lg mb-2 ${
-                                isOCRVerified ? 'text-green-800' : 'text-red-800'
-                              }`}>
-                                {isOCRVerified ? '✓ ตรวจสอบผ่าน!' : '✗ ตรวจสอบไม่ผ่าน'}
-                              </p>
-                              
-                              {ocrResult.success && (
-                                <div className="space-y-2">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className={`p-2 rounded border ${
-                                      isOCRVerified ? 'bg-white border-green-300' : 'bg-white border-red-300'
-                                    }`}>
-                                      <p className="text-xs text-slate-600">จำนวนในสลิป</p>
-                                      <p className={`font-bold text-lg ${
-                                        isOCRVerified ? 'text-green-700' : 'text-red-700'
-                                      }`}>
+                        {/* Result */}
+                        {!ocrProcessing && ocrResult && (
+                          <div className={`border-2 rounded-lg p-4 ${
+                            isOCRVerified ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-400'
+                          }`}>
+                            <div className="flex items-start gap-3">
+                              {isOCRVerified ? (
+                                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                              )}
+                              <div className="flex-1">
+                                <p className={`font-bold mb-2 ${
+                                  isOCRVerified ? 'text-green-900' : 'text-red-900'
+                                }`}>
+                                  {isOCRVerified ? '✓ ตรวจสอบผ่าน' : '✗ ไม่ผ่าน'}
+                                </p>
+                                
+                                {ocrResult.success && (
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <p className="text-slate-600">จำนวนในสลิป</p>
+                                      <p className={`font-bold ${isOCRVerified ? 'text-green-700' : 'text-red-700'}`}>
                                         ฿{ocrResult.amount?.toLocaleString()}
                                       </p>
                                     </div>
-                                    <div className="bg-blue-50 p-2 rounded border border-blue-300">
-                                      <p className="text-xs text-slate-600">ยอดที่ต้องชำระ</p>
-                                      <p className="font-bold text-blue-700 text-lg">
+                                    <div>
+                                      <p className="text-slate-600">ยอดที่ต้องชำระ</p>
+                                      <p className="font-bold text-blue-700">
                                         ฿{totalPrice.toLocaleString()}
                                       </p>
                                     </div>
                                   </div>
+                                )}
 
-                                  {isOCRVerified ? (
-                                    <div className="bg-green-100 border border-green-400 rounded p-2 flex items-center gap-2">
-                                      <Check className="w-5 h-5 text-green-700" />
-                                      <div>
-                                        <p className="text-xs font-bold text-green-800">
-                                          จำนวนเงินถูกต้อง - พร้อมชำระ
-                                        </p>
-                                        {ocrResult.bankName && (
-                                          <p className="text-xs text-green-700">
-                                            {ocrResult.bankName} • {ocrResult.transactionDate}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="bg-red-100 border border-red-400 rounded p-2">
-                                      <p className="text-xs font-bold text-red-800">
-                                        จำนวนเงินไม่ถูกต้อง - กรุณาโอนใหม่
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {showOCRDetails && ocrResult.referenceNo && (
-                                    <div className="bg-white rounded border p-2 text-xs">
-                                      <p><strong>เลขอ้างอิง:</strong> {ocrResult.referenceNo}</p>
-                                    </div>
-                                  )}
-
+                                {!isOCRVerified && (
                                   <button
                                     type="button"
-                                    onClick={() => setShowOCRDetails(!showOCRDetails)}
-                                    className="w-full text-xs text-blue-600 font-medium py-1 hover:underline"
+                                    onClick={retryOCR}
+                                    className="mt-2 text-sm text-blue-600 hover:underline flex items-center gap-1"
                                   >
-                                    {showOCRDetails ? '▲ ซ่อน' : '▼ แสดง'}รายละเอียด
+                                    <RotateCw className="w-3 h-3" />
+                                    ลองอีกครั้ง
                                   </button>
-                                </div>
-                              )}
-
-                              {!ocrResult.success && ocrResult.errors && (
-                                <div className="text-xs text-red-700 space-y-1">
-                                  {ocrResult.errors.slice(0, 2).map((err, i) => (
-                                    <p key={i}>• {err}</p>
-                                  ))}
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Credit Card Form */}
-              {paymentMethod === 'creditcard' && (
-                <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      หมายเลขบัตร <span className="text-red-500">*</span>
-                    </label>
+                {/* Credit Card */}
+                {paymentMethod === 'creditcard' && (
+                  <div className="space-y-4">
                     <input
                       type="text"
                       name="cardNumber"
                       value={formData.cardNumber}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
+                      placeholder="หมายเลขบัตร"
                       required
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        วันหมดอายุ <span className="text-red-500">*</span>
-                      </label>
+                    <div className="grid grid-cols-2 gap-4">
                       <input
                         type="text"
                         name="expiryDate"
                         value={formData.expiryDate}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="MM/YY"
-                        maxLength={5}
                         required
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        CVV <span className="text-red-500">*</span>
-                      </label>
                       <input
                         type="text"
                         name="cvv"
                         value={formData.cvv}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="123"
-                        maxLength={3}
+                        className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="CVV"
                         required
                       />
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Error Message */}
+              {/* Error */}
               {error && (
-                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-xl">
-                  <div className="flex items-start">
-                    <XCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-700 whitespace-pre-line font-medium">
-                      {error}
-                    </p>
+                <div className="bg-red-50 border-l-4 border-red-500 rounded-r-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 font-medium">{error}</p>
                   </div>
                 </div>
               )}
 
-              {/* Submit Button */}
-              <div className="flex gap-3">
+              {/* Submit & Skip Buttons */}
+              <div className="space-y-3">
+                {/* Main Submit Button */}
                 <button
                   type="submit"
-                  disabled={processing || ocrProcessing || selectedDates.length === 0 || (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)}
-                  className={`flex-1 font-bold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-3 text-white text-lg ${
-                    processing || ocrProcessing || selectedDates.length === 0 || (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)
-                      ? 'bg-slate-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                  disabled={
+                    processing || 
+                    ocrProcessing || 
+                    selectedDates.length === 0 || 
+                    (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)
+                  }
+                  className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
+                    processing || ocrProcessing || selectedDates.length === 0 || 
+                    (paymentMethod !== 'creditcard' && totalPrice > 0 && !isOCRVerified)
+                      ? 'bg-slate-400 text-white cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
                   }`}
                 >
-                  {processing ? (
+                  {processing || ocrProcessing ? (
                     <>
-                      <Loader2 className="animate-spin h-6 w-6" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       กำลังดำเนินการ...
-                    </>
-                  ) : ocrProcessing ? (
-                    <>
-                      <Loader2 className="animate-spin h-6 w-6" />
-                      กำลังตรวจสอบสลิป...
-                    </>
-                  ) : selectedDates.length === 0 ? (
-                    <>
-                      <AlertCircle className="h-6 w-6" />
-                      กรุณาเลือกวันที่จอง
-                    </>
-                  ) : !isOCRVerified && paymentMethod !== 'creditcard' && totalPrice > 0 ? (
-                    <>
-                      <AlertCircle className="h-6 w-6" />
-                      กรุณาอัปโหลดสลิปที่ถูกต้อง
                     </>
                   ) : (
                     <>
-                      <Check className="h-6 w-6" />
-                      ยืนยันชำระเงิน ฿{totalPrice.toLocaleString()}
+                      <Check className="w-5 h-5" />
+                      ยืนยันชำระ ฿{totalPrice.toLocaleString()}
                     </>
                   )}
                 </button>
 
-                {/* Skip Payment Button */}
+                {/* Test Complete Button */}
                 <button
                   type="button"
                   onClick={() => {
-                    router.push('/booking/success');
+                    // Validate minimum requirements
+                    if (!formData.name || !formData.email || !formData.phone) {
+                      alert('⚠️ กรุณากรอกข้อมูลติดต่อให้ครบถ้วน');
+                      return;
+                    }
+
+                    if (selectedDates.length === 0) {
+                      alert('⚠️ กรุณาเลือกวันที่จองอย่างน้อย 1 วัน');
+                      return;
+                    }
+
+                    if (!confirm('🧪 ทดสอบระบบ\n\nจะสร้างการจองแบบทดสอบและบันทึกลงระบบ\n\nข้อมูลจะแสดงใน Admin Dashboard\n\nดำเนินการต่อหรือไม่?')) {
+                      return;
+                    }
+
+                    try {
+                      // Create booking data
+                      const bookingId = 'BK' + Date.now();
+                      const newBooking = {
+                        id: bookingId,
+                        stallNumber: bookingData.stall.number,
+                        customerName: formData.name,
+                        phone: formData.phone,
+                        email: formData.email,
+                        bookingDate: new Date().toISOString().split('T')[0],
+                        startDate: selectedDates[0] || new Date().toISOString().split('T')[0],
+                        endDate: selectedDates[selectedDates.length - 1] || new Date().toISOString().split('T')[0],
+                        days: selectedDates.length,
+                        totalPrice: totalPrice,
+                        pricePerDay: bookingData.stall.price,
+                        status: 'pending',
+                        paymentStatus: 'pending',
+                        paymentMethod: paymentMethod,
+                        createdAt: new Date().toISOString(),
+                        zone: bookingData.stall.zone,
+                        size: bookingData.stall.size,
+                        bookingDates: selectedDates,
+                        isTest: true
+                      };
+
+                      // Get existing bookings
+                      const existingBookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+                      
+                      // Add new booking
+                      existingBookings.push(newBooking);
+                      
+                      // Save to localStorage
+                      localStorage.setItem('bookings', JSON.stringify(existingBookings));
+                      
+                      // Remove pending booking
+                      localStorage.removeItem('pendingBooking');
+                      
+                      // Redirect to success
+                      router.push('/booking/success?stall=' + bookingData.stall.number + '&test=true&bookingId=' + bookingId);
+                    } catch (error) {
+                      console.error('Error creating test booking:', error);
+                      alert('❌ เกิดข้อผิดพลาดในการสร้างการจองทดสอบ');
+                    }
                   }}
-                  disabled={processing}
-                  className="px-6 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="ข้ามการชำระเงินและไปหน้าสำเร็จ"
+                  disabled={processing || selectedDates.length === 0 || !formData.name || !formData.email || !formData.phone}
+                  className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2 border-orange-600"
                 >
-                  ⏭️ ข้าม
+                  <AlertCircle className="w-5 h-5" />
+                  <span>⚡ เสร็จสิ้น (ทดสอบ)</span>
                 </button>
-              </div>
 
-              {/* Warning */}
-              {selectedDates.length === 0 && (
-                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3">
-                  <p className="text-xs text-yellow-800 text-center">
-                    <strong>⚠️ กรุณาเลือกวันที่จอง</strong><br />
-                    เลือกวันที่จากด้านบนเพื่อดำเนินการต่อ
-                  </p>
-                </div>
-              )}
-
-              {(paymentMethod === 'bank' || paymentMethod === 'promptpay') && totalPrice > 0 && !isOCRVerified && selectedDates.length > 0 && (
-                <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-3">
+                {/* Info about test button */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                   <p className="text-xs text-orange-800 text-center">
-                    <strong>⚠️ ยังไม่สามารถชำระได้</strong><br />
-                    กรุณาอัปโหลดสลิปที่มีจำนวนเงิน{' '}
-                    <strong>฿{totalPrice.toLocaleString()}</strong>
+                    💡 <strong>ปุ่มด้านบน</strong> ใช้สำหรับทดสอบระบบ - บันทึกข้อมูลและข้ามการชำระเงิน
                   </p>
                 </div>
-              )}
+              </div>
             </form>
           </div>
         </div>
