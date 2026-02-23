@@ -10,6 +10,10 @@ export async function GET() {
     });
     return NextResponse.json(stalls);
   } catch (error) {
-    return NextResponse.json({ error: 'Error fetching data' }, { status: 500 });
+    console.error('Error fetching stalls:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch stalls', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }

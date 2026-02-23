@@ -58,10 +58,16 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error(error);
+    console.error('Booking error:', error);
     if (error.message === 'OCCUPIED') {
       return NextResponse.json({ error: 'เสียใจด้วย ล็อคนี้ถูกจองไปแล้วในวันนี้' }, { status: 409 });
     }
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการจอง' }, { status: 500 });
+    return NextResponse.json(
+      { 
+        error: 'เกิดข้อผิดพลาดในการจอง',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }, 
+      { status: 500 }
+    );
   }
 }

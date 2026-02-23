@@ -9,20 +9,36 @@ export async function GET() {
     });
     return NextResponse.json(bookings);
   } catch (error) {
-    return NextResponse.json({ error: 'Error' }, { status: 500 });
+    console.error('Error fetching bookings:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch bookings', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, status } = body; 
+    const { id, status } = body;
+    
+    if (!id || !status) {
+      return NextResponse.json(
+        { error: 'Missing required fields: id, status' },
+        { status: 400 }
+      );
+    }
+    
     const updated = await prisma.booking.update({
       where: { id },
       data: { status },
     });
     return NextResponse.json({ success: true, booking: updated });
   } catch (error) {
-    return NextResponse.json({ error: 'Error' }, { status: 500 });
+    console.error('Error updating booking:', error);
+    return NextResponse.json(
+      { error: 'Failed to update booking', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }

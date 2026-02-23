@@ -2,6 +2,12 @@
 const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  
+  // Suppress known warnings
+  onDemandEntries: {
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
+  },
 
   images: {
     unoptimized: true,
@@ -33,6 +39,14 @@ const nextConfig = {
         ],
       },
     ];
+  },
+
+  // Suppress specific warnings
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
   },
 };
 
